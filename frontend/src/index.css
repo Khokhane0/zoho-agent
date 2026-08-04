@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+}
+
+@layer components {
+  .ticket-card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200;
+  }
+  
+  .ticket-card-header {
+    @apply px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center;
+  }
+  
+  .status-badge-open {
+    @apply px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800;
+  }
+  
+  .status-badge-closed {
+    @apply px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800;
+  }
+  
+  .status-badge-pending {
+    @apply px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800;
+  }
+  
+  .status-badge-progress {
+    @apply px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800;
+  }
+}
+
+/* Scrollbar personnalisée */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c7cd;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a0a7ad;
+}
