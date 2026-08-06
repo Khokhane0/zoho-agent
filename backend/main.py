@@ -55,7 +55,7 @@ async def root():
     return {"message": "Zoho Agent API", "status": "online", "version": "2.0.0"}
 
 @app.get("/api/tickets", response_model=List[Ticket])
-async def get_tickets(limit: int = 10):
+async def get_tickets(limit: int = 50):
     """Récupère les tickets avec leur description complète"""
     try:
         # 1. Récupérer la liste des tickets
@@ -160,8 +160,10 @@ async def get_stats():
     try:
         tickets_traites = charger_tickets_traites()
         data = get_tickets_data()
+        print(f" Stats - tickets_traites: {tickets_traites}")  # Debug
         return {
             "total_traites": len(tickets_traites),
+            "processed_ids": list(tickets_traites),
             "dernier_traite": list(tickets_traites)[-1] if tickets_traites else None,
             "tickets_data": data.get("tickets", [])
         }

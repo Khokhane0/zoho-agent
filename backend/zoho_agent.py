@@ -188,7 +188,7 @@ def traiter_ticket_autonome(ticket_id: str) -> dict:
     print(f" Message : {message_client[:100]}...")
     
     analyse = analyser_ticket_intelligent(ticket_info)
-    print(f" {analyse.get('categorie', 'Inconnu')} | ⚡ {analyse.get('urgence', 'Inconnue')} |  {analyse.get('sentiment', 'Inconnu')}")
+    print(f" {analyse.get('categorie', 'Inconnu')} |  {analyse.get('urgence', 'Inconnue')} |  {analyse.get('sentiment', 'Inconnu')}")
     
     reponse = rediger_reponse_concise(analyse, ticket_info)
     print(f" Réponse générée : {reponse[:100]}...")
@@ -212,7 +212,7 @@ def traiter_ticket_autonome(ticket_id: str) -> dict:
     }
 
 # ==========================================
-# BOUCLE AUTONOME AVEC ARRÊT RÉEL
+# BOUCLE AUTONOME AVEC ARRÊT RAPIDE
 # ==========================================
 def boucle_autonome():
     global agent_running, tickets_traites_count, stop_requested
@@ -227,6 +227,7 @@ def boucle_autonome():
     tickets_traites_count = len(tickets_traites)
     print(f" {tickets_traites_count} tickets déjà traités")
     
+    # Boucle avec vérification rapide de l'arrêt
     while agent_running and not stop_requested:
         try:
             print(f"\n {datetime.now().strftime('%H:%M:%S')} - Recherche de nouveaux tickets...")
@@ -254,12 +255,12 @@ def boucle_autonome():
             else:
                 print(" Aucun ticket trouvé")
             
-            # Attente avec vérification périodique de l'arrêt
-            for _ in range(INTERVALLE):
+            # Attente avec vérification toutes les 2 secondes
+            for _ in range(INTERVALLE // 2):
                 if not agent_running or stop_requested:
                     print(" Arrêt demandé pendant l'attente")
                     return
-                time.sleep(1)
+                time.sleep(2)
             
         except Exception as e:
             print(f" Erreur dans la boucle : {e}")
@@ -268,7 +269,7 @@ def boucle_autonome():
     print(" Boucle autonome arrêtée")
 
 # ==========================================
-# DÉMARRAGE / ARRÊT
+# DÉMARRAGE / ARRÊT RAPIDE
 # ==========================================
 def demarrer_agent():
     global agent_running, agent_thread, stop_requested, tickets_traites_count
@@ -296,9 +297,9 @@ def arreter_agent():
     stop_requested = True
     agent_running = False
     
-    # Attendre que le thread se termine (avec timeout)
+    # Attendre que le thread se termine (timeout plus court)
     if agent_thread and agent_thread.is_alive():
-        agent_thread.join(timeout=5)
+        agent_thread.join(timeout=2)
     
     print(" Agent arrêté")
     return {"status": "stopped", "message": "Agent arrêté"}

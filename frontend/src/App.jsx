@@ -12,7 +12,7 @@ const API_URL = 'http://localhost:8000/api';
 
 function App() {
   const [tickets, setTickets] = useState([]);
-  const [stats, setStats] = useState({ total_traites: 0, tickets_data: [] });
+  const [stats, setStats] = useState({ total_traites: 0, processed_ids: [], tickets_data: [] });
   const [agentRunning, setAgentRunning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expandedTicket, setExpandedTicket] = useState(null);
@@ -24,7 +24,7 @@ function App() {
   // ==========================================
   const fetchTickets = async () => {
     try {
-      const response = await axios.get(`${API_URL}/tickets?limit=10`);
+      const response = await axios.get(`${API_URL}/tickets?limit=50`);
       setTickets(response.data);
     } catch (error) {
       toast.error('Erreur lors du chargement des tickets');
@@ -51,24 +51,26 @@ function App() {
 
   const toggleAgent = async () => {
     try {
+      setLoading(true);
       if (agentRunning) {
         await axios.post(`${API_URL}/agent/stop`);
         toast.success(' Agent arrêté');
         setAgentRunning(false);
       } else {
         await axios.post(`${API_URL}/agent/start`);
-        toast.success(' Agent démarré');
+        toast.success('Agent démarré');
         setAgentRunning(true);
       }
-      // Rafraîchir les données après changement d'état
       setTimeout(() => {
         fetchTickets();
         fetchStats();
-      }, 1000);
+        fetchAgentStatus();
+        setLoading(false);
+      }, 2000);
     } catch (error) {
       toast.error(' Erreur lors du changement d\'état');
-      // Réinitialiser l'état si l'API échoue
       fetchAgentStatus();
+      setLoading(false);
     }
   };
 
@@ -76,10 +78,9 @@ function App() {
     setProcessingId(ticketId);
     toast.loading(`Traitement du ticket #${ticketId}...`, { id: 'processing' });
     try {
-      const response = await axios.post(`${API_URL}/tickets/${ticketId}/process`);
+      await axios.post(`${API_URL}/tickets/${ticketId}/process`);
       toast.success(` Ticket #${ticketId} traité avec succès !`, { id: 'processing' });
       await Promise.all([fetchTickets(), fetchStats()]);
-      return response.data;
     } catch (error) {
       toast.error(` Erreur lors du traitement du ticket #${ticketId}`, { id: 'processing' });
       console.error(error);
@@ -99,7 +100,6 @@ function App() {
     };
     loadData();
 
-    // Rafraîchissement automatique toutes les 10 secondes
     const interval = setInterval(() => {
       fetchTickets();
       fetchStats();
@@ -110,14 +110,26 @@ function App() {
   }, []);
 
   // ==========================================
-  // STATISTIQUES
+  // STATISTIQUES CORRIGÉES
   // ==========================================
   const totalTickets = tickets.length;
   const openTickets = tickets.filter(t => t.status === 'Open').length;
   const closedTickets = tickets.filter(t => t.status === 'Closed').length;
-  const pendingTickets = tickets.filter(t => t.status === 'Pending' || t.status === 'Open').length;
+
+  // 📌 En attente = Total tickets - Tickets déjà traités (peu importe le statut)
+  const processedIds = stats.processed_ids || [];
+  const pendingTickets = totalTickets - processedIds.length;
+
   const autoProcessed = stats.total_traites || 0;
   const dataCollected = stats.tickets_data?.length || 0;
+
+  // Pour debug - voir dans la console
+  useEffect(() => {
+    console.log(' Stats debug:');
+    console.log('   Total tickets:', totalTickets);
+    console.log('   Processed IDs:', processedIds);
+    console.log('   En attente:', pendingTickets);
+  }, [totalTickets, processedIds, pendingTickets]);
 
   // ==========================================
   // RENDU
@@ -126,7 +138,6 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       <Toaster position="top-right" />
       
-      {/* HEADER */}
       <header className="bg-gradient-to-r from-blue-600 to-indigo-700 shadow-lg sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
@@ -146,14 +157,22 @@ function App() {
               </div>
               <button
                 onClick={toggleAgent}
+                disabled={loading}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                  loading ? 'opacity-50 cursor-not-allowed' :
                   agentRunning 
                     ? 'bg-yellow-500 hover:bg-yellow-600 text-white' 
                     : 'bg-green-500 hover:bg-green-600 text-white'
                 }`}
               >
-                {agentRunning ? <FaPause className="inline mr-1" /> : <FaPlay className="inline mr-1" />}
-                {agentRunning ? 'Pause' : 'Démarrer'}
+                {loading ? (
+                  <FaSpinner className="inline animate-spin mr-1" />
+                ) : agentRunning ? (
+                  <FaPause className="inline mr-1" />
+                ) : (
+                  <FaPlay className="inline mr-1" />
+                )}
+                {loading ? 'Chargement...' : agentRunning ? 'Pause' : 'Démarrer'}
               </button>
               <button
                 onClick={() => setShowHistory(!showHistory)}
@@ -167,7 +186,6 @@ function App() {
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
       <main className="container mx-auto px-6 py-8">
         {/* STATS CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -218,11 +236,11 @@ function App() {
             <FaSync className={`${loading ? 'animate-spin' : ''}`} />
             <span>Rafraîchir</span>
           </button>
-          <span className="text-sm text-gray-400 flex items-center">
+          <span className={`text-sm flex items-center ${pendingTickets > 0 ? 'text-red-500 font-medium' : 'text-green-500'}`}>
             {agentRunning 
               ? ' Agent actif - Traitement automatique en cours' 
-              : openTickets > 0 
-                ? ` ${openTickets} ticket(s) en attente - Cliquez sur "Démarrer" pour les traiter` 
+              : pendingTickets > 0 
+                ? ` ${pendingTickets} ticket(s) en attente - Cliquez sur "Démarrer"` 
                 : ' Aucun ticket en attente'
             }
           </span>
@@ -232,7 +250,13 @@ function App() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
             <h2 className="font-semibold text-gray-700"> Tickets récents</h2>
-            <span className="text-sm text-gray-500">{tickets.length} ticket(s)</span>
+            <span className="text-sm text-gray-500">
+              {tickets.length} ticket(s) - 
+              <span className="text-green-600 ml-1">{processedIds.length} traités</span>
+              {closedTickets > 0 && (
+                <span className="text-gray-400 ml-2">({closedTickets} fermés)</span>
+              )}
+            </span>
           </div>
           
           {loading ? (
@@ -244,7 +268,6 @@ function App() {
             <div className="text-center py-12 text-gray-500">
               <FaTicketAlt className="mx-auto text-4xl text-gray-300 mb-3" />
               <p>Aucun ticket trouvé</p>
-              <p className="text-sm text-gray-400 mt-1">Les tickets apparaîtront ici automatiquement</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -258,6 +281,7 @@ function App() {
                   onToggleExpand={() => setExpandedTicket(expandedTicket === ticket.id ? null : ticket.id)}
                   isProcessing={processingId === ticket.id}
                   agentRunning={agentRunning}
+                  isProcessed={processedIds.includes(String(ticket.id))}
                 />
               ))}
             </div>
@@ -299,7 +323,6 @@ function App() {
           </motion.div>
         )}
 
-        {/* FOOTER */}
         <div className="mt-8 text-center text-xs text-gray-400 border-t border-gray-200 pt-4">
           Zoho Agent v2.0 • {new Date().toLocaleString()}
         </div>
@@ -341,12 +364,12 @@ function StatCard({ icon, value, label, color, delay }) {
 // ==========================================
 // COMPOSANT TICKET CARD
 // ==========================================
-function TicketCard({ ticket, index, onProcess, isExpanded, onToggleExpand, isProcessing, agentRunning }) {
+function TicketCard({ ticket, index, onProcess, isExpanded, onToggleExpand, isProcessing, agentRunning, isProcessed }) {
   const statusColors = {
-    'Open': 'status-badge-open',
-    'Closed': 'status-badge-closed',
-    'Pending': 'status-badge-pending',
-    'In Progress': 'status-badge-progress',
+    'Open': 'bg-yellow-100 text-yellow-800',
+    'Closed': 'bg-green-100 text-green-800',
+    'Pending': 'bg-blue-100 text-blue-800',
+    'In Progress': 'bg-purple-100 text-purple-800',
   };
 
   const statusDot = {
@@ -370,7 +393,7 @@ function TicketCard({ ticket, index, onProcess, isExpanded, onToggleExpand, isPr
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="px-6 py-4 hover:bg-gray-50 transition-colors group"
+      className={`px-6 py-4 hover:bg-gray-50 transition-colors group ${isProcessed ? 'bg-green-50/30' : ''}`}
     >
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex-1 min-w-0 cursor-pointer" onClick={onToggleExpand}>
@@ -380,10 +403,13 @@ function TicketCard({ ticket, index, onProcess, isExpanded, onToggleExpand, isPr
             <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[ticket.status] || 'bg-gray-100 text-gray-800'}`}>
               {ticket.status}
             </span>
-            <span className="text-xs text-gray-400">{ticket.date || 'N/A'}</span>
-            {agentRunning && ticket.status === 'Open' && (
-              <span className="text-xs text-green-600 animate-pulse"> En traitement auto...</span>
+            {isProcessed && (
+              <span className="text-xs text-green-600 font-medium"> Traité</span>
             )}
+            {agentRunning && ticket.status === 'Open' && !isProcessed && (
+              <span className="text-xs text-green-600 animate-pulse"> En traitement...</span>
+            )}
+            <span className="text-xs text-gray-400">{ticket.date || 'N/A'}</span>
           </div>
           <p className="text-gray-800 font-medium truncate mt-1">{ticket.subject || 'Sans sujet'}</p>
           <p className="text-sm text-gray-500 mt-1 line-clamp-2">
@@ -401,9 +427,9 @@ function TicketCard({ ticket, index, onProcess, isExpanded, onToggleExpand, isPr
           </button>
           <button
             onClick={() => onProcess(ticket.id)}
-            disabled={isProcessing || agentRunning}
+            disabled={isProcessing || agentRunning || isProcessed}
             className={`px-4 py-1.5 text-sm rounded-lg transition-colors flex items-center space-x-1 ${
-              isProcessing || agentRunning
+              isProcessing || agentRunning || isProcessed
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                 : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
             }`}
@@ -413,7 +439,7 @@ function TicketCard({ ticket, index, onProcess, isExpanded, onToggleExpand, isPr
             ) : (
               <FaPaperPlane className="text-xs" />
             )}
-            <span>{isProcessing ? 'En cours...' : agentRunning ? 'Auto' : 'Poster'}</span>
+            <span>{isProcessing ? 'En cours...' : isProcessed ? 'Traité' : agentRunning ? 'Auto' : 'Poster'}</span>
           </button>
         </div>
       </div>
