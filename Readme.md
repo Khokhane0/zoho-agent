@@ -280,3 +280,17 @@ Zoho Desk API for providing the ticketing platform
 OpenAI for GPT-4 language model capabilities
 Anthropic for Claude language model integration
 LangChain for agent framework support
+
+## Aperçu de l'application
+
+### Tableau de bord principal
+![alt text](Zoho_Agent_Dashboard.png)
+
+### Détail d'un ticket
+![alt text](Zoho_Agent_Ticket.png)
+
+### Historique des tickets
+![alt text](Zoho_Agent_TicketHistory.png)
+
+### Moteur d'exécution
+![alt text](Zoho_Agent_Backend-1.png)

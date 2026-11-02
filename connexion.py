@@ -12,7 +12,7 @@ def test_endpoint(url, headers=None, description=""):
     if headers is None:
         headers = {"Authorization": f"Zoho-oauthtoken {ACCESS_TOKEN}"}
     
-    print(f"\n🧪 {description}")
+    print(f"\n {description}")
     print(f"URL : {url}")
     
     try:
@@ -22,7 +22,7 @@ def test_endpoint(url, headers=None, description=""):
         if response.status_code == 200:
             try:
                 data = response.json()
-                print(f"✅ Succès !")
+                print(f" Succès !")
                 if data.get("data"):
                     print(f"   {len(data['data'])} éléments trouvés")
                 else:
@@ -30,15 +30,15 @@ def test_endpoint(url, headers=None, description=""):
             except:
                 print(f"   Réponse (texte) : {response.text[:200]}")
         else:
-            print(f"❌ Échec : {response.text[:200]}")
+            print(f" Échec : {response.text[:200]}")
     except Exception as e:
-        print(f"❌ Erreur : {e}")
+        print(f" Erreur : {e}")
 
 # ==========================================
 # 2. Toutes les combinaisons
 # ==========================================
 print("=" * 70)
-print("🔍 TEST DE TOUTES LES URLS POSSIBLES")
+print(" TEST DE TOUTES LES URLS POSSIBLES")
 print("=" * 70)
 
 # Test 1 : URL de base + orgId en paramètre
@@ -107,6 +107,6 @@ test_endpoint(
 )
 
 print("\n" + "=" * 70)
-print("✅ TESTS TERMINÉS")
+print(" TESTS TERMINÉS")
 print("=" * 70)
 input("\nAppuie sur Entrée pour quitter...")
