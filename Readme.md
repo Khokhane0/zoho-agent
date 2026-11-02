@@ -74,7 +74,7 @@ Port 5173 available for frontend development server
 
 Installation
 1. Clone the Repository
-git clone https://github.com/yourusername/zoho-agent.git
+git clone https://github.com/Khokhane0/zoho-agent.git
 cd zoho-agent
 
 2. Environment Configuration
